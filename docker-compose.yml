@@ -1,0 +1,21 @@
+services:
+  postgres:
+    # Official Postgres 17 image with the pgvector extension pre-installed
+    image: pgvector/pgvector:pg17
+    container_name: interview-postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-interview_db}
+      POSTGRES_USER: ${DB_USER:-interview}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-interview}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-interview} -d ${DB_NAME:-interview_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:
