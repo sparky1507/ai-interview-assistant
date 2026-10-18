@@ -41,3 +41,14 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
     operations-sorter: method
+
+app:
+  jwt:
+    # DEV-ONLY default key (Base64, 48 bytes). Production MUST set JWT_SECRET — generate with:
+    #   openssl rand -base64 48
+    secret: ${JWT_SECRET:N/qTwN6tTzJn7O1D7jcww5ARgfeZMJLOXZuHHETSOJvQ3fCYvBgP2fH78zNkiN4H}
+    expiration: ${JWT_EXPIRATION:24h}
+    issuer: ai-interview-assistant
+  cors:
+    # Comma-separated; the Vite dev server for the React frontend runs on 5173
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
