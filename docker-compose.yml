@@ -17,5 +17,21 @@ services:
       timeout: 5s
       retries: 10
 
+  # Free, local LLM + embeddings. Optional: only starts with `docker compose --profile ollama up -d`
+  # (set AI_PROVIDER=ollama in .env). Pull models once with:
+  #   docker exec interview-ollama ollama pull mxbai-embed-large
+  ollama:
+    image: ollama/ollama:0.40.6
+    container_name: interview-ollama
+    profiles: ["ollama"]
+    ports:
+      - "11434:11434"
+    volumes:
+      # Downloaded models survive container restarts/recreation
+      - ollama-models:/root/.ollama
+    # Uncomment to use an NVIDIA GPU (needs Docker Desktop with WSL2 GPU support); CPU works for embeddings
+    # gpus: all
+
 volumes:
   pgdata:
+  ollama-models:

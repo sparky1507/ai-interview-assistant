@@ -2,6 +2,59 @@ spring:
   application:
     name: ai-interview-assistant
 
+  # Local secrets (OPENAI_API_KEY, ...) live in the git-ignored .env next to pom.xml; real env vars still win
+  config:
+    import: optional:file:.env[.properties]
+
+  ai:
+    # Provider switch: openai | ollama. Code only depends on Spring AI's EmbeddingModel/ChatModel interfaces.
+    model:
+      chat: ${AI_PROVIDER:openai}
+      embedding: ${AI_PROVIDER:openai}
+      # Not used by this app; disabled so the OpenAI starter doesn't create (and require keys for) them
+      image: none
+      audio:
+        speech: none
+        transcription: none
+      moderation: none
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      chat:
+        options:
+          model: ${OPENAI_CHAT_MODEL:gpt-4o-mini}
+      embedding:
+        options:
+          model: text-embedding-3-small
+          # Shortened from 1536 (Matryoshka embeddings keep most quality) to match Ollama's mxbai-embed-large,
+          # so either provider fits the same vector(1024) column
+          dimensions: 1024
+    ollama:
+      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+      chat:
+        options:
+          model: ${OLLAMA_CHAT_MODEL:llama3.1}
+      embedding:
+        options:
+          model: mxbai-embed-large
+    vectorstore:
+      pgvector:
+        # Flyway (V3) owns the table; Spring AI only checks it exists with the expected columns
+        initialize-schema: false
+        schema-validation: true
+        table-name: document_chunks
+        # Must match vector(1024) in V3. Setting it also stops Spring AI calling the API at startup to detect it
+        dimensions: 1024
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+        id-type: UUID
+    retry:
+      # Default is 10 attempts; ingestion runs inside a DB transaction, so fail reasonably fast instead
+      max-attempts: 3
+      backoff:
+        initial-interval: 1s
+        multiplier: 2
+        max-interval: 5s
+
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:interview_db}
     username: ${DB_USER:interview}
@@ -52,3 +105,8 @@ app:
   cors:
     # Comma-separated; the Vite dev server for the React frontend runs on 5173
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  ingestion:
+    # ~300 words per chunk: small enough that a chunk is about one topic (a job, a project, a requirement list)
+    chunk-size-tokens: 400
+    # Caps embedding cost per document; a 5MB resume is still far below this once text is extracted
+    max-extracted-chars: 100000

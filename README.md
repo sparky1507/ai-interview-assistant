@@ -13,14 +13,17 @@ Prerequisites: JDK 21, Maven 3.9+, Docker.
 # 1. Start Postgres with pgvector
 docker compose up -d
 
-# 2. Run the app
+# 2. Put your OpenAI key in .env (git-ignored, loaded automatically)
+cp .env.example .env    # then set OPENAI_API_KEY=sk-...
+
+# 3. Run the app
 mvn spring-boot:run
 ```
 
 - Health check: http://localhost:8080/actuator/health
 - Swagger UI:  http://localhost:8080/swagger-ui.html
 
-Configuration comes from environment variables (see `.env.example`). `application.yml` ships a
+Configuration comes from environment variables or `.env` (see `.env.example`). `application.yml` ships a
 **dev-only** `JWT_SECRET` default; any shared or production environment must set its own:
 
 ```bash
@@ -39,11 +42,39 @@ openssl rand -base64 48
 Auth is stateless: the JWT (HS256, 24h by default) carries the user id, email and role, so requests are
 verified without a DB lookup. Logout is client-side (discard the token).
 
+## Upload documents
+
+With a token from the auth flow (Swagger → **Documents**):
+
+- **POST /api/v1/documents** (multipart): `file` = your resume (PDF, DOCX or TXT, max 5MB), `type` = `RESUME`
+- **POST /api/v1/documents/text**: `{"type": "JOB_DESCRIPTION", "title": "Backend Engineer @ Acme", "content": "..."}`
+- **GET /api/v1/documents**, **GET /api/v1/documents/{id}** (includes the extracted text), **DELETE /api/v1/documents/{id}**
+
+Pipeline: detect type from the bytes (Tika) → extract text → split into ~400-token chunks → embed →
+store in pgvector (`document_chunks`) with `userId`/`documentId` metadata, so retrieval only ever
+searches the caller's own chunks.
+
+### AI provider
+
+`AI_PROVIDER=openai` (default) or `ollama`. Embeddings are 1024-dimensional for both
+(OpenAI `text-embedding-3-small` with `dimensions=1024`, Ollama `mxbai-embed-large`), so switching needs
+no schema change, but existing documents must be re-uploaded (different models' vectors aren't comparable).
+**Free local option (Ollama in Docker, no API key):**
+
+```bash
+docker compose --profile ollama up -d                          # starts Postgres + Ollama
+docker exec interview-ollama ollama pull mxbai-embed-large     # ~670 MB, once
+```
+
+Then set `AI_PROVIDER=ollama` in `.env` and run the app.
+
 ## Tests
 
 ```bash
 mvn test   # unit tests + integration tests against a real Postgres+pgvector container (Testcontainers)
 ```
+
+Tests never call an AI provider: a deterministic fake `EmbeddingModel` replaces it, so no API key is needed.
 
 ## Project structure
 
@@ -54,18 +85,18 @@ src/main/java/com/harsh/interviewassistant
 ├── security/            # JWT service + filter, SecurityConfig, 401/403 handler
 ├── auth/                # Register / login endpoints and DTOs
 ├── user/                # User entity, repository, GET /users/me
-├── document/            # Step 3: upload, parse, chunk, embed
+├── document/            # Upload, Tika text extraction, chunking, embedding into pgvector
 ├── interview/           # Step 4–5: question generation (SSE), answer feedback
 src/main/resources
 ├── application.yml
-└── db/migration/        # Flyway: V1 extensions, V2 users, ... one migration per feature
+└── db/migration/        # Flyway: V1 extensions, V2 users, V3 documents + vector chunks
 ```
 
 ## Roadmap
 
 1. ✅ Project setup: Spring Boot, Postgres + pgvector, Flyway, error handling, Swagger
 2. ✅ JWT authentication (register, login, stateless JWT filter, BCrypt)
-3. Document upload → parse → chunk → embed into pgvector
+3. ✅ Document upload → parse → chunk → embed into pgvector (OpenAI or Ollama)
 4. RAG question generation with SSE streaming
 5. Answer evaluation and feedback
 6. Rate limiting, polish

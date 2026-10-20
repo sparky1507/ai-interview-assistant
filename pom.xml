@@ -68,6 +68,26 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- AI: both providers on the classpath; AI_PROVIDER (spring.ai.model.*) picks the active one -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-model-openai</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-model-ollama</artifactId>
+        </dependency>
+        <!-- Vector store: embeddings in Postgres via pgvector -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-vector-store-pgvector</artifactId>
+        </dependency>
+        <!-- Text extraction from PDF / DOCX / TXT (Apache Tika) -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-tika-document-reader</artifactId>
+        </dependency>
+
         <!-- Persistence: JPA/Hibernate + PostgreSQL -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -133,6 +153,13 @@
 
     <dependencyManagement>
         <dependencies>
+            <!-- Testcontainers brings commons-compress 1.24 and Maven's "nearest wins" picks it over the
+                 1.27+/1.28 that POI/Tika need (NoSuchMethodError on DOCX). Pin the version Tika 3.2 uses. -->
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-compress</artifactId>
+                <version>1.28.0</version>
+            </dependency>
             <dependency>
                 <groupId>org.springframework.ai</groupId>
                 <artifactId>spring-ai-bom</artifactId>

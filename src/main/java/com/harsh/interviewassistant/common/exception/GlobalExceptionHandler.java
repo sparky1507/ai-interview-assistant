@@ -1,6 +1,8 @@
 package com.harsh.interviewassistant.common.exception;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.retry.NonTransientAiException;
+import org.springframework.ai.retry.TransientAiException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -47,6 +49,23 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(ConflictException.class)
     public ProblemDetail handleConflict(ConflictException ex) {
         return problem(HttpStatus.CONFLICT, "Conflict", ex.getMessage());
+    }
+
+    @ExceptionHandler(UnsupportedMediaTypeException.class)
+    public ProblemDetail handleUnsupportedMediaType(UnsupportedMediaTypeException ex) {
+        return problem(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Unsupported file type", ex.getMessage());
+    }
+
+    /**
+     * The AI provider failed: outage, timeout, rate limit, exhausted quota, bad key. Spring AI has already
+     * retried the transient ones. 503 tells clients "try again later", unlike a 500 which means a bug here.
+     * The provider's message is logged but not returned (it can mention billing/account details).
+     */
+    @ExceptionHandler({TransientAiException.class, NonTransientAiException.class})
+    public ProblemDetail handleAiProviderFailure(RuntimeException ex) {
+        log.error("AI provider call failed: {}", ex.getMessage());
+        return problem(HttpStatus.SERVICE_UNAVAILABLE, "AI provider unavailable",
+                "The AI service could not process the request right now. Please try again later.");
     }
 
     /** A DB constraint fired, e.g. two concurrent registrations with the same email. */

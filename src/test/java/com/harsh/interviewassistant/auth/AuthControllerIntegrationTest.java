@@ -1,13 +1,10 @@
 package com.harsh.interviewassistant.auth;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.harsh.interviewassistant.AbstractIntegrationTest;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
 import java.util.Map;
@@ -28,12 +25,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class AuthControllerIntegrationTest extends AbstractIntegrationTest {
 
     private static final String PASSWORD = "s3cret-pass";
-
-    @Autowired
-    private MockMvc mockMvc;
-
-    @Autowired
-    private ObjectMapper objectMapper;
 
     @Test
     void registerThenLoginThenGetCurrentUser() throws Exception {
